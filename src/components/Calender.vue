@@ -3,9 +3,8 @@
     <v-col>
       <v-sheet height="64">
         <v-toolbar flat color="white">
-          <v-btn outlined class="mr-4" @click="setToday">
-            Today
-          </v-btn>
+          <v-btn outlined class="mr-4" color="primary" @click="dialog = true">New Event</v-btn>
+          <v-btn outlined class="mr-4" @click="setToday">Today</v-btn>
           <v-btn fab text small @click="prev">
             <v-icon small>mdi-chevron-left</v-icon>
           </v-btn>
@@ -16,10 +15,7 @@
           <v-spacer></v-spacer>
           <v-menu bottom right>
             <template v-slot:activator="{ on }">
-              <v-btn
-                outlined
-                v-on="on"
-              >
+              <v-btn outlined v-on="on">
                 <span>{{ typeToLabel[type] }}</span>
                 <v-icon right>mdi-menu-down</v-icon>
               </v-btn>
@@ -62,189 +58,232 @@
           :activator="selectedElement"
           offset-x
         >
-          <v-card
-            color="grey lighten-4"
-            min-width="350px"
-            flat
-          >
-            <v-toolbar
-              :color="selectedEvent.color"
-              dark
-            >
+          <v-card color="grey lighten-4" min-width="350px" flat>
+            <v-toolbar :color="selectedEvent.color" dark>
               <v-btn icon>
-                <v-icon>mdi-delete</v-icon>
+                <v-icon @click="deleteEvent(selectedEvent)">mdi-delete</v-icon>
               </v-btn>
               <v-toolbar-title v-html="selectedEvent.name"></v-toolbar-title>
               <v-spacer></v-spacer>
             </v-toolbar>
             <v-card-text>
-              <form v-if="selectedEvent.id !== currentlyEditing">
-                {{ selectedEvent.details  }}
-              </form>
+              <form v-if="selectedEvent.id !== currentlyEditing">{{ selectedEvent.details }}</form>
 
               <form v-else>
                 <textarea-autosize
                   v-model="selectedEvent.details"
-                  :min-height = "100"
+                  :min-height="100"
                   style="width : 100%"
-                  placeholder= "add note"
+                  placeholder="add note"
                 ></textarea-autosize>
               </form>
             </v-card-text>
             <v-card-actions>
-              <v-btn
-                text
-                color="secondary"
-                @click="selectedOpen = false"
-              >
-                Close
-              </v-btn>
+              <v-btn text color="secondary" @click="selectedOpen = false">Close</v-btn>
               <v-btn
                 text
                 color="primary"
                 v-if="currentlyEditing !== selectedEvent.id"
                 @click="editEvent(selectedEvent)"
-              >
-                Edit
-              </v-btn>
-              <v-btn
-                text
-                color="success"
-                @click="updateEvent(selectedEvent)"
-                v-else
-              >
-                Save
-              </v-btn>
+              >Edit</v-btn>
+              <v-btn text color="success" @click="updateEvent(selectedEvent)" v-else>Save</v-btn>
             </v-card-actions>
           </v-card>
         </v-menu>
       </v-sheet>
     </v-col>
+
+    <v-dialog v-model="dialog" width="500">
+      <v-card>
+        <v-container>
+          <v-form @submit.prevent="storeEvent">
+            <v-col cols="12">
+              <v-text-field type="text" v-model="name" label="Name*" required></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field type="date" data-date-format="YYYY MMMM DD" v-model="start" label="Start*" required></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field type="date" v-model="end" label="End*" required></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field type="color" v-model="color" label="Color*" required></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field label="Details*" v-model="details" rows="5" required></v-text-field>
+            </v-col>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="primary" type="submit" class="float-right" @click="dialog = false">Save</v-btn>
+            </v-card-actions>
+          </v-form>
+        </v-container>
+      </v-card>
+    </v-dialog>
   </v-row>
 </template>
 
 <script>
-import { db } from '@/main';
-  export default {
-    data: () => ({
-      today: new Date().toISOString().substr(0, 10),
-      focus: new Date().toISOString().substr(0, 10),
-      type: 'month',
-      typeToLabel: {
-        month: 'Month',
-        week: 'Week',
-        day: 'Day',
-        '4day': '4 Days',
-      },
-      start: null,
-      end: null,
-      selectedEvent: {},
-      selectedElement: null,
-      selectedOpen: false,
-      events: [],
-      currentlyEditing : null
-    }),
-      computed: {
-      title () {
-        const { start, end } = this
-        if (!start || !end) {
-          return ''
-        }
-
-        const startMonth = this.monthFormatter(start)
-        const endMonth = this.monthFormatter(end)
-        const suffixMonth = startMonth === endMonth ? '' : endMonth
-
-        const startYear = start.year
-        const endYear = end.year
-        const suffixYear = startYear === endYear ? '' : endYear
-
-        const startDay = start.day + this.nth(start.day)
-        const endDay = end.day + this.nth(end.day)
-
-        switch (this.type) {
-          case 'month':
-            return `${startMonth} ${startYear}`
-          case 'week':
-          case '4day':
-            return `${startMonth} ${startDay} ${startYear} - ${suffixMonth} ${endDay} ${suffixYear}`
-          case 'day':
-            return `${startMonth} ${startDay} ${startYear}`
-        }
-        return ''
-      },
-      monthFormatter () {
-        return this.$refs.calendar.getFormatter({
-          timeZone: 'UTC', month: 'long',
-        })
-      },
+import { db } from "@/main";
+export default {
+  data: () => ({
+    today: new Date().toISOString().substr(0, 10),
+    focus: new Date().toISOString().substr(0, 10),
+    type: "month",
+    typeToLabel: {
+      month: "Month",
+      week: "Week",
+      day: "Day",
+      "4day": "4 Days"
     },
-    mounted () {
+    name : null,
+    start: null,
+    end: null,
+    details : null,
+    color : '#482323',
+    selectedEvent: {},
+    selectedElement: null,
+    selectedOpen: false,
+    events: [],
+    currentlyEditing: null,
+    dialog: false
+  }),
+  computed: {
+    title() {
+      console.log(this.sta)
+      const { start, end } = this;
+      if (!start || !end) {
+        return "";
+      }
+
+      const startMonth = this.monthFormatter(start);
+      const endMonth = this.monthFormatter(end);
+      const suffixMonth = startMonth === endMonth ? "" : endMonth;
+
+      const startYear = start.year;
+      const endYear = end.year;
+      const suffixYear = startYear === endYear ? "" : endYear;
+
+      const startDay = start.day + this.nth(start.day);
+      const endDay = end.day + this.nth(end.day);
+
+      switch (this.type) {
+        case "month":
+          return `${startMonth} ${startYear}`;
+        case "week":
+        case "4day":
+          return `${startMonth} ${startDay} ${startYear} - ${suffixMonth} ${endDay} ${suffixYear}`;
+        case "day":
+          return `${startMonth} ${startDay} ${startYear}`;
+      }
+      return "";
+    },
+    monthFormatter() {
+      return this.$refs.calendar.getFormatter({
+        timeZone: "UTC",
+        month: "long"
+      });
+    }
+  },
+  mounted() {
+    this.getEvents();
+  },
+  methods: {
+    async getEvents() {
+      let snapshot = await db.collection("calEvent").get();
+      let events = [];
+      snapshot.forEach(docs => {
+        let event_data = docs.data();
+        event_data.id = docs.id;
+        events.push(event_data);
+      });
+      this.events = events;
+      console.log(this.events);
+    },
+    async deleteEvent(ev) {
+      await db
+        .collection("calEvent")
+        .doc(ev.id)
+        .delete();
+      this.selectedOpen = false;
       this.getEvents();
     },
-    methods: {
-      async getEvents(){
-        let snapshot= await db.collection("calEvent").get();
-        let events = [];
-        snapshot.forEach(docs => {
-          let event_data= docs.data();
-          event_data.id = docs.id;
-          events.push(event_data);
-        });
-        this.events = events;
-      },
-      viewDay ({ date }) {
-        this.focus = date
-        this.type = 'day'
-      },
-      getEventColor (event) {
-        return event.color
-      },
-      setToday () {
-        this.focus = this.today
-      },
-      prev () {
-        this.$refs.calendar.prev()
-      },
-      next () {
-        this.$refs.calendar.next()
-      },
-      showEvent ({ nativeEvent, event }) {
-        const open = () => {
-          this.selectedEvent = event
-          this.selectedElement = nativeEvent.target
-          setTimeout(() => this.selectedOpen = true, 10)
-        }
-
-        if (this.selectedOpen) {
-          this.selectedOpen = false
-          setTimeout(open, 10)
-        } else {
-          open()
-        }
-
-        nativeEvent.stopPropagation()
-      },
-      updateRange ({ start, end }) {
-        // You could load events from an outside source (like database) now that we have the start and end dates on the calendar
-        this.start = start
-        this.end = end
-      },
-      nth (d) {
-        return d > 3 && d < 21
-          ? 'th'
-          : ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][d % 10]
-      },
-      editEvent (ev){
-        this.currentlyEditing= ev.id;
-      },
-      async updateEvent (ev){
-        await db.collection("calEvent").doc(this.currentlyEditing).update({
-            details : ev.details
-        });
-        this.selectedOpen= false;
-        this.currentlyEditing= null;
+    async storeEvent(){
+      console.log(this.name, this.color)
+      if(this.name && this.color && this.start && this.end && this.details){
+          await db.collection("calEvent").add(
+          {
+            name : this.name,
+            start : this.start,
+            end : this.end,
+            details : this.details,
+            color : this.color
+          });
+          this.getEvents();
+          this.name= null;
+          this.start= null;
+          this.end= null;
+          this.details= null;
+          this.color= null;
+      }else{
+        alert("Please fill input");
       }
     },
+    viewDay({ date }) {
+      this.focus = date;
+      this.type = "day";
+    },
+    getEventColor(event) {
+      return event.color;
+    },
+    setToday() {
+      this.focus = this.today;
+    },
+    prev() {
+      this.$refs.calendar.prev();
+    },
+    next() {
+      this.$refs.calendar.next();
+    },
+    showEvent({ nativeEvent, event }) {
+      const open = () => {
+        this.selectedEvent = event;
+        this.selectedElement = nativeEvent.target;
+        setTimeout(() => (this.selectedOpen = true), 10);
+      };
+
+      if (this.selectedOpen) {
+        this.selectedOpen = false;
+        setTimeout(open, 10);
+      } else {
+        open();
+      }
+
+      nativeEvent.stopPropagation();
+    },
+    updateRange({ start, end }) {
+      // You could load events from an outside source (like database) now that we have the start and end dates on the calendar
+      this.start = start;
+      this.end = end;
+    },
+    nth(d) {
+      return d > 3 && d < 21
+        ? "th"
+        : ["th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"][d % 10];
+    },
+    editEvent(ev) {
+      this.currentlyEditing = ev.id;
+    },
+    async updateEvent(ev) {
+      await db
+        .collection("calEvent")
+        .doc(this.currentlyEditing)
+        .update({
+          details: ev.details
+        });
+      this.selectedOpen = false;
+      this.currentlyEditing = null;
+    }
   }
+};
 </script>
