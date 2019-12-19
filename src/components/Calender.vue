@@ -150,7 +150,6 @@ export default {
   }),
   computed: {
     title() {
-      console.log(this.sta)
       const { start, end } = this;
       if (!start || !end) {
         return "";
@@ -198,7 +197,6 @@ export default {
         events.push(event_data);
       });
       this.events = events;
-      console.log(this.events);
     },
     async deleteEvent(ev) {
       await db
@@ -209,7 +207,6 @@ export default {
       this.getEvents();
     },
     async storeEvent(){
-      console.log(this.name, this.color)
       if(this.name && this.color && this.start && this.end && this.details){
           await db.collection("calEvent").add(
           {
